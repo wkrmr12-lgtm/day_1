@@ -147,6 +147,31 @@
     .card h3 { margin: 8px 0 4px; }
     .card p  { color: var(--muted); font-size: 0.95rem; }
 
+    /* ===== 배열 학습 애니메이션 카드 ===== */
+    .study-card { display: flex; flex-direction: column; }
+    .study-card .ep {
+      align-self: flex-start;
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--primary-dark);
+      background: #fff1e8;
+      border-radius: 999px;
+      padding: 2px 10px;
+    }
+    .study-card p { flex: 1; margin-bottom: 14px; }
+    .study-btn {
+      display: inline-block;
+      text-align: center;
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .study-btn:hover { background: var(--primary-dark); transform: translateY(-2px); }
+
     footer {
       text-align: center;
       padding: 24px 16px;
@@ -201,6 +226,7 @@
           <li><a href="#food" data-page="food">식당</a></li>
           <li><a href="#bus" data-page="bus">버스</a></li>
           <li><a href="#tour" data-page="tour">관광지</a></li>
+          <li><a href="#study" data-page="study">배열 학습</a></li>
         </ul>
       </nav>
     </div>
@@ -271,12 +297,43 @@
         <div class="card"><div class="icon">⛰️</div><h3>오름 트레킹</h3><p>새별오름, 용눈이오름 등 부드러운 능선 위에서 섬 전체를 볼 수 있습니다.</p></div>
       </div>
     </section>
+
+    <!-- 배열 학습 -->
+    <section class="page" id="page-study">
+      <div class="hero">
+        <h1>🎬 배열 학습 애니메이션</h1>
+        <p>자바스크립트 배열과 반복문을 한 줄씩 실행하며 눈으로 확인해 보세요.</p>
+      </div>
+      <div class="cards">
+        <div class="card study-card">
+          <span class="ep">1편</span>
+          <div class="icon">🧮</div>
+          <h3>숫자 배열 한 줄씩 실행</h3>
+          <p>1부터 100까지 담긴 배열에서 값을 하나씩 꺼내 합계를 구하는 과정을 단계별로 봅니다.</p>
+          <a class="study-btn" href="array_animation.html">▶ 1편 보기</a>
+        </div>
+        <div class="card study-card">
+          <span class="ep">2편</span>
+          <div class="icon">🛒</div>
+          <h3>과일 장바구니 배열</h3>
+          <p>사과·배·귤 3가지 상품을 배열에 담고 가격 × 개수로 총 구매가격을 계산합니다.</p>
+          <a class="study-btn" href="shopping_cart.html">▶ 2편 보기</a>
+        </div>
+        <div class="card study-card">
+          <span class="ep">3편</span>
+          <div class="icon">🍓</div>
+          <h3>과일 가게 50개 반복문</h3>
+          <p>상품 50개를 장바구니에 담는 화면과, 그 뒤에서 돌아가는 반복문 로직을 나란히 봅니다.</p>
+          <a class="study-btn" href="fruit_loop.html">▶ 3편 보기</a>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>© 2026 제주 여행 안내 · 바이브코딩 심화 1일차</footer>
 
   <script>
-    const pages = ["jeju", "hotel", "food", "bus", "tour"];
+    const pages = ["jeju", "hotel", "food", "bus", "tour", "study"];
     const nav = document.getElementById("menu");
     const hamburger = document.querySelector(".hamburger");
     const links = nav.querySelectorAll("a");

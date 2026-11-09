@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>과일 가게 반복문</title>
+  <style>
+    :root {
+      --bg1: #120b2e;
+      --bg2: #1b0f45;
+      --glass: rgba(255, 255, 255, 0.07);
+      --glass-line: rgba(255, 255, 255, 0.14);
+      --ink: #f3f0ff;
+      --muted: #b5acd9;
+      --pink: #ff4fa3;
+      --cyan: #34e7ff;
+      --lime: #9dff5c;
+      --gold: #ffd23f;
+      --red: #ff4d5e;
+      --purple: #a86bff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(1200px 700px at 10% -10%, #3a1a7a 0%, transparent 60%),
+                  radial-gradient(900px 600px at 110% 10%, #0d4a6b 0%, transparent 55%),
+                  linear-gradient(160deg, var(--bg1), var(--bg2));
+      background-attachment: fixed;
+      min-height: 100vh;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    .blob { position: fixed; border-radius: 50%; filter: blur(60px); opacity: 0.3; z-index: -1; animation: float 14s ease-in-out infinite alternate; }
+    .blob.b1 { width: 320px; height: 320px; background: var(--pink); top: 55%; left: -80px; }
+    .blob.b2 { width: 260px; height: 260px; background: var(--cyan); top: -60px; right: 10%; animation-delay: -5s; }
+    .blob.b3 { width: 220px; height: 220px; background: var(--purple); bottom: -60px; right: -40px; animation-delay: -9s; }
+    @keyframes float { to { transform: translate(60px, -40px) scale(1.15); } }
+
+    header { max-width: 1320px; margin: 0 auto; padding: 20px 16px 4px; }
+
+    h1 {
+      font-size: 1.55rem;
+      background: linear-gradient(90deg, var(--gold), var(--pink), var(--cyan), var(--gold));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      background-size: 200% auto;
+      animation: shine 6s linear infinite;
+    }
+    @keyframes shine { to { background-position: 200% center; } }
+
+    .sub { color: var(--muted); font-size: 0.92rem; }
+
+    /* ===== 조작 바 (위에 고정) ===== */
+    .controls-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(18, 11, 46, 0.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--glass-line);
+    }
+
+    .controls {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button, select { font: inherit; font-size: 0.92rem; cursor: pointer; }
+
+    .controls button, .controls select {
+      border: 1px solid var(--glass-line);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--ink);
+      padding: 8px 12px;
+      border-radius: 10px;
+    }
+    .controls select option { color: #111; }
+    .controls button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
+    .controls button:disabled { opacity: 0.35; cursor: default; }
+    .controls .primary { border: 0; background: linear-gradient(90deg, var(--pink), var(--purple)); font-weight: 800; box-shadow: 0 0 16px rgba(255, 79, 163, 0.55); }
+    .controls .play { border: 0; background: linear-gradient(90deg, #22c55e, var(--cyan)); color: #08131a; font-weight: 800; }
+
+    .speed { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.88rem; }
+    .progress { margin-left: auto; color: var(--muted); font-size: 0.86rem; }
+    .bar { height: 4px; background: rgba(255, 255, 255, 0.1); }
+    .bar div { height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--pink)); transition: width 0.3s; box-shadow: 0 0 10px var(--pink); }
+
+    /* ===== 레이아웃 ===== */
+    .layout {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 14px 16px 48px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .side-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.1rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+    .side-title small { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+    .side-title .tag { font-size: 0.75rem; padding: 2px 10px; border-radius: 999px; font-weight: 800; }
+    .tag.shop  { background: var(--gold); color: #2a1b00; }
+    .tag.logic { background: var(--cyan); color: #04202a; }
+
+    .col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
+    .col > * { min-width: 0; }
+
+    .panel {
+      background: var(--glass);
+      border: 1px solid var(--glass-line);
+      border-radius: 18px;
+      padding: 14px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+    .panel h2 { font-size: 0.9rem; color: var(--muted); margin-bottom: 10px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .panel h2 span:last-child { font-family: Consolas, monospace; font-weight: 400; }
+
+    /* ===== 왼쪽: 상품 진열대 (배열) ===== */
+    .shelf { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; }
+
+    .tile {
+      position: relative;
+      border-radius: 10px;
+      padding: 12px 0 3px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: transform 0.25s, background 0.25s, opacity 0.25s, box-shadow 0.25s;
+    }
+    .tile .ti { position: absolute; top: 1px; left: 4px; font-family: Consolas, monospace; font-size: 0.6rem; color: var(--muted); }
+    .tile .te { font-size: 1.35rem; line-height: 1.15; }
+    .tile .ta { font-family: Consolas, monospace; font-size: 0.62rem; color: #ffb86b; }
+
+    .shelf.hidden .tile { visibility: hidden; }
+    .shelf.appear .tile { animation: dropIn 0.5s cubic-bezier(.2, 1.4, .4, 1) backwards; animation-delay: calc(var(--i) * 18ms); }
+    @keyframes dropIn { from { opacity: 0; transform: translateY(-30px) scale(0.5); } }
+
+    .tile.current {
+      transform: scale(1.22);
+      z-index: 2;
+      background: linear-gradient(160deg, var(--pink), var(--purple));
+      border-color: #fff;
+      box-shadow: 0 0 20px rgba(255, 79, 163, 0.85);
+    }
+    .tile.current .ti, .tile.current .ta { color: #fff; }
+    .tile.done { opacity: 0.28; }
+    .tile.done::after { content: "✔"; position: absolute; right: 3px; top: 0; font-size: 0.65rem; color: var(--lime); }
+
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 0.78rem; color: var(--muted); }
+
+    /* 장바구니 */
+    .pay { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .pay .label { color: var(--muted); font-size: 0.85rem; }
+    .pay .money {
+      font-family: Consolas, monospace;
+      font-size: 2.2rem;
+      font-weight: 900;
+      line-height: 1.1;
+      background: linear-gradient(90deg, var(--gold), #ff9a3d);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 12px rgba(255, 210, 63, 0.5));
+    }
+    .pay .money.bump { animation: bump 0.45s ease; }
+    @keyframes bump { 40% { transform: scale(1.12); } }
+    .pay .stats { font-size: 0.85rem; color: var(--muted); text-align: right; }
+    .pay .stats b { color: var(--ink); }
+
+    .cart {
+      max-height: 300px;
+      overflow-y: auto;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      padding: 6px;
+      min-height: 120px;
+    }
+    .cart .empty { color: var(--muted); font-size: 0.9rem; padding: 34px 0; text-align: center; }
+
+    .crow {
+      display: grid;
+      grid-template-columns: 38px 28px minmax(0, 1fr) auto auto;
+      gap: 6px;
+      align-items: center;
+      padding: 5px 6px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+    }
+    .crow:nth-child(odd) { background: rgba(255, 255, 255, 0.04); }
+    .crow .ci { font-family: Consolas, monospace; font-size: 0.75rem; color: var(--muted); }
+    .crow .ce { font-size: 1.2rem; }
+    .crow .cq { font-family: Consolas, monospace; color: var(--muted); font-size: 0.8rem; }
+    .crow .cs { font-family: Consolas, monospace; font-weight: 800; color: var(--gold); text-align: right; min-width: 82px; }
+    .crow.new { animation: slideIn 0.45s ease; background: rgba(255, 210, 63, 0.18); }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-30px); } }
+
+    /* ===== 오른쪽: 로직 ===== */
+    .explain {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(168, 107, 255, 0.28), rgba(52, 231, 255, 0.12));
+      border: 1px solid rgba(168, 107, 255, 0.45);
+      min-height: 112px;
+      font-size: 1.02rem;
+    }
+    .explain b { color: var(--gold); }
+    .explain code { font-family: Consolas, monospace; background: rgba(0, 0, 0, 0.35); padding: 1px 6px; border-radius: 5px; color: var(--cyan); }
+
+    .status { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 10px; }
+    .stat { border-radius: 14px; padding: 10px 12px; background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.1); }
+    .stat .k { font-size: 0.78rem; color: var(--muted); font-family: Consolas, monospace; }
+    .stat .v { font-family: Consolas, monospace; font-weight: 900; font-size: 1.35rem; line-height: 1.25; word-break: break-all; }
+    .stat .v small { font-size: 0.8rem; color: var(--muted); font-weight: 400; }
+    .stat.loop .v { color: var(--pink); text-shadow: 0 0 12px rgba(255, 79, 163, 0.6); }
+    .stat.ivar .v { color: var(--cyan); font-size: 1rem; }
+    .stat.sum .v  { color: var(--lime); text-shadow: 0 0 12px rgba(157, 255, 92, 0.5); }
+    .stat.flash { animation: statflash 0.5s ease; }
+    @keyframes statflash { 0% { box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(255, 210, 63, 0.6); } }
+    .minibar { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); margin-top: 6px; overflow: hidden; }
+    .minibar div { height: 100%; background: var(--pink); width: 0; transition: width 0.25s; }
+
+    /* 코드 */
+    .code {
+      background: rgba(5, 3, 18, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 8px 0;
+      font-family: Consolas, "D2Coding", monospace;
+      font-size: 0.86rem;
+      overflow-x: auto;
+    }
+    .code-line {
+      white-space: pre;
+      padding: 2px 14px 2px 0;
+      border-left: 4px solid transparent;
+      transition: background 0.2s;
+    }
+    .code-line .no { display: inline-block; width: 34px; text-align: right; padding-right: 12px; color: #5d5486; user-select: none; }
+    .code-line.active { background: linear-gradient(90deg, rgba(255, 79, 163, 0.32), rgba(255, 79, 163, 0.04)); border-left-color: var(--pink); }
+    .code-line.related { background: rgba(52, 231, 255, 0.12); border-left-color: var(--cyan); }
+    .tk-kw  { color: #c792ff; font-weight: 700; }
+    .tk-str { color: #a5ff8a; }
+    .tk-num { color: #ffb86b; }
+    .tk-cm  { color: #7d76a3; font-style: italic; }
+
+    .twocol { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+
+    /* 순서도 */
+    .flow { display: grid; gap: 4px; position: relative; padding-left: 26px; }
+    .node {
+      border-radius: 12px;
+      padding: 7px 10px;
+      font-size: 0.86rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      transition: background 0.2s, box-shadow 0.2s, transform 0.2s, color 0.2s;
+    }
+    .node.q { border-style: dashed; border-color: var(--gold); }
+    .node.endn { border-color: var(--lime); }
+    .node.on {
+      background: linear-gradient(90deg, var(--pink), var(--purple));
+      border-color: #fff;
+      box-shadow: 0 0 18px rgba(255, 79, 163, 0.75);
+      transform: scale(1.03);
+      font-weight: 800;
+    }
+    .node.endn.on { background: linear-gradient(90deg, #22c55e, var(--cyan)); color: #04202a; box-shadow: 0 0 18px rgba(52, 231, 255, 0.75); }
+    .arrow { text-align: center; color: var(--muted); font-size: 0.78rem; line-height: 1.1; }
+    .arrow b { color: var(--lime); }
+    .arrow.no b { color: #ff8a95; }
+
+    .loopback {
+      position: absolute;
+      left: 4px;
+      top: 18px;
+      bottom: 92px;
+      width: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-right: 0;
+      border-radius: 10px 0 0 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .loopback::before { content: "▶"; position: absolute; top: -9px; right: -8px; font-size: 0.7rem; color: rgba(255, 255, 255, 0.4); }
+    .loopback span {
+      position: absolute;
+      left: -12px;
+      top: 50%;
+      transform: translateY(-50%) rotate(180deg);
+      writing-mode: vertical-rl;
+      font-size: 0.68rem;
+      color: var(--muted);
+      background: var(--bg2);
+      padding: 4px 0;
+    }
+    .loopback.on { border-color: var(--gold); box-shadow: -4px 0 14px rgba(255, 210, 63, 0.5); }
+    .loopback.on::before { color: var(--gold); }
+    .loopback.on span { color: var(--gold); }
+
+    /* 계산기 */
+    .calc { display: grid; gap: 10px; }
+    .crow2 { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.2fr); gap: 6px; align-items: center; }
+    .slot { border-radius: 12px; padding: 6px 4px; text-align: center; background: rgba(0, 0, 0, 0.3); border: 1px dashed rgba(255, 255, 255, 0.2); }
+    .slot .val { font-family: Consolas, monospace; font-size: 1.05rem; font-weight: 900; word-break: break-all; }
+    .slot .lab { font-family: Consolas, monospace; font-size: 0.68rem; color: var(--muted); }
+    .slot.filled { border-style: solid; border-color: rgba(52, 231, 255, 0.5); }
+    .slot.filled .val { color: var(--cyan); }
+    .slot.res.filled { border-color: var(--gold); }
+    .slot.res.filled .val { color: var(--gold); text-shadow: 0 0 10px rgba(255, 210, 63, 0.7); }
+    .slot.pop { animation: popIn 0.4s cubic-bezier(.2, 1.6, .4, 1); }
+    @keyframes popIn { from { transform: scale(0.4); opacity: 0; } }
+    .op { font-size: 1.2rem; font-weight: 900; color: var(--pink); }
+
+    .console {
+      background: rgba(0, 0, 0, 0.55);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-family: Consolas, monospace;
+      color: var(--lime);
+      border: 1px solid rgba(157, 255, 92, 0.25);
+      min-height: 46px;
+    }
+    .console .ln::before { content: "› "; color: #5d5486; }
+    .console .placeholder { color: #5d5486; }
+
+    /* 날아가는 과일 */
+    .chip {
+      position: fixed;
+      z-index: 50;
+      transform: translate(-50%, -50%);
+      font-size: 1.8rem;
+      pointer-events: none;
+      filter: drop-shadow(0 0 10px rgba(255, 210, 63, 0.9));
+      transition-property: left, top, opacity, transform;
+      transition-timing-function: cubic-bezier(.5, 0, .3, 1), cubic-bezier(.5, -0.6, .3, 1), ease, ease;
+    }
+
+    .banner {
+      position: fixed;
+      left: 50%;
+      top: 42%;
+      transform: translate(-50%, -50%) scale(0.5);
+      z-index: 60;
+      padding: 18px 28px;
+      border-radius: 20px;
+      font-size: 1.6rem;
+      font-weight: 900;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      background: linear-gradient(135deg, #22c55e, #34e7ff);
+      color: #08131a;
+      box-shadow: 0 0 60px rgba(52, 231, 255, 0.8);
+      transition: transform 0.5s cubic-bezier(.2, 1.6, .4, 1), opacity 0.3s;
+    }
+    .banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .banner small { display: block; font-size: 0.9rem; font-weight: 700; }
+
+    canvas#fx { position: fixed; inset: 0; pointer-events: none; z-index: 55; }
+
+    @media (max-width: 1100px) {
+      .twocol { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .progress { margin-left: 0; width: 100%; }
+    }
+
+    @media (max-width: 520px) {
+      h1 { font-size: 1.2rem; }
+      .shelf { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .status { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .stat.ivar { grid-column: span 2; order: 3; }
+      .crow2 { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+      .crow2 .eq, .crow2 .res { grid-column: span 3; }
+      .crow2 .eq { text-align: center; }
+      .crow { grid-template-columns: 32px 24px minmax(0, 1fr) auto; }
+      .crow .cq { display: none; }
+      .pay .money { font-size: 1.7rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <canvas id="fx"></canvas>
+  <div class="banner" id="banner"></div>
+
+  <header>
+    <a href="index.html#study" style="color:var(--muted);text-decoration:none;font-size:0.9rem">← 학습 목록으로</a>
+    <h1>🍓 과일 가게에서 배우는 배열 + 반복문</h1>
+    <p class="sub">상품 50개를 하나씩 장바구니에 담으며 총 금액을 계산합니다. <b>왼쪽</b>은 우리가 보는 쇼핑 화면, <b>오른쪽</b>은 그때 컴퓨터 속에서 일어나는 일이에요.</p>
+  </header>
+
+  <div class="controls-wrap">
+    <div class="controls">
+      <button id="btnReset">⏮ 처음</button>
+      <button id="btnPrev">◀ 이전</button>
+      <button id="btnNext" class="primary">다음 ▶</button>
+      <button id="btnPlay" class="play">▶ 자동 재생</button>
+      <label class="speed">속도
+        <select id="speed">
+          <option value="1100">🐢 느리게</option>
+          <option value="650" selected>🚶 보통</option>
+          <option value="250">🏃 빠르게</option>
+          <option value="60">🚀 터보</option>
+        </select>
+      </label>
+      <button id="btnEnd">⏭ 끝으로</button>
+      <span class="progress" id="progress"></span>
+    </div>
+    <div class="bar"><div id="bar"></div></div>
+  </div>
+
+  <div class="layout">
+    <!-- ===== 왼쪽: 쇼핑 화면 ===== -->
+    <div class="col">
+      <div class="side-title"><span class="tag shop">쇼핑 화면</span> 🛒 우리가 보는 것</div>
+
+      <section class="panel">
+        <h2><span>🍉 상품 목록 = 배열 <b>data</b></span><span id="lenLabel">data.length = ?</span></h2>
+        <div class="shelf hidden" id="shelf"></div>
+        <div class="legend">
+          <span>🟪 지금 꺼낸 상자 (i)</span><span>✔ 장바구니에 담음</span><span>작은 숫자 = 번호(인덱스), ×숫자 = 개수</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2><span>🧺 장바구니</span><span>최신 상품이 맨 위</span></h2>
+        <div class="pay">
+          <div>
+            <div class="label">결제 금액 (= sum)</div>
+            <div class="money" id="money">0원</div>
+          </div>
+          <div class="stats" id="stats"></div>
+        </div>
+        <div class="cart" id="cart"></div>
+      </section>
+    </div>
+
+    <!-- ===== 오른쪽: 프로그램 로직 ===== -->
+    <div class="col">
+      <div class="side-title"><span class="tag logic">프로그램 로직</span> 🧠 컴퓨터 속에서 일어나는 일</div>
+
+      <div class="explain" id="explain"></div>
+
+      <div class="status">
+        <div class="stat loop" id="statLoop">
+          <div class="k">반복 횟수</div>
+          <div class="v" id="loopVal">0 <small>/ 50</small></div>
+          <div class="minibar"><div id="loopBar"></div></div>
+        </div>
+        <div class="stat ivar" id="statI">
+          <div class="k">i (지금 꺼낸 상자)</div>
+          <div class="v" id="iVal">—</div>
+        </div>
+        <div class="stat sum" id="statSum">
+          <div class="k">sum (누적 합계)</div>
+          <div class="v" id="sumVal">—</div>
+        </div>
+      </div>
+
+      <section class="panel">
+        <h2><span>📄 코드 (지금 실행 중인 줄이 빛나요)</span></h2>
+        <div class="code" id="code"></div>
+      </section>
+
+      <div class="twocol">
+        <section class="panel">
+          <h2><span>🔁 반복문의 순서</span></h2>
+          <div class="flow">
+            <div class="loopback" id="fback"><span>다시 ①로</span></div>
+            <div class="node q" id="f1">① 아직 안 꺼낸 상자가 있나?</div>
+            <div class="arrow"><b>예</b> ↓</div>
+            <div class="node" id="f2">② 다음 상자를 꺼내 i에 담기</div>
+            <div class="arrow">↓</div>
+            <div class="node" id="f3">③ 가격 × 개수 계산</div>
+            <div class="arrow">↓</div>
+            <div class="node" id="f4">④ sum에 더하기 (장바구니 담기)</div>
+            <div class="arrow no">①에서 <b>아니오</b> (상자를 다 꺼냄) ↓</div>
+            <div class="node endn" id="f5">⑤ 반복 끝! 결과 출력</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2><span>⚙️ 계산기</span></h2>
+          <div class="calc">
+            <div class="crow2">
+              <div class="slot" id="cP"><div class="val">?</div><div class="lab">i.price</div></div>
+              <div class="op">×</div>
+              <div class="slot" id="cA"><div class="val">?</div><div class="lab">i.amount</div></div>
+              <div class="op eq">=</div>
+              <div class="slot res" id="cS"><div class="val">?</div><div class="lab">이번 상품 금액</div></div>
+            </div>
+            <div class="crow2">
+              <div class="slot" id="cB"><div class="val">?</div><div class="lab">sum (전)</div></div>
+              <div class="op">+</div>
+              <div class="slot" id="cS2"><div class="val">?</div><div class="lab">이번 금액</div></div>
+              <div class="op eq">=</div>
+              <div class="slot res" id="cN"><div class="val">?</div><div class="lab">sum (후)</div></div>
+            </div>
+          </div>
+          <h2 style="margin-top:14px"><span>🖥️ 콘솔</span></h2>
+          <div class="console" id="console"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 데이터 50개 만들기 =====
+    const FRUITS = [
+      ["🍎", "사과", 100],   ["🍐", "배", 1000],     ["🍊", "귤", 300],      ["🍌", "바나나", 500],
+      ["🍇", "포도", 3000],  ["🍓", "딸기", 200],    ["🍑", "복숭아", 1500], ["🍉", "수박", 15000],
+      ["🍋", "레몬", 700],   ["🥝", "키위", 400],    ["🍒", "체리", 150],    ["🍍", "파인애플", 5000],
+      ["🥭", "망고", 2500],  ["🍈", "멜론", 8000],   ["🥥", "코코넛", 3500]
+    ];
+
+    const data = [];
+    for (let k = 0; k < 50; k++) {
+      const f = FRUITS[(k * 7) % FRUITS.length];
+      data.push({ emoji: f[0], name: f[1], price: f[2], amount: (k * 5 + 4) % 9 + 1 });
+    }
+    const N = data.length;
+
+    // prefix[k] = 0번 ~ (k-1)번 상품까지 더한 합계
+    const prefix = [0];
+    data.forEach(function (d, k) { prefix.push(prefix[k] + d.price * d.amount); });
+    const TOTAL = prefix[N];
+
+    const won = function (n) { return n.toLocaleString("ko-KR") + "원"; };
+    const num = function (n) { return n.toLocaleString("ko-KR"); };
+
+    // 받침에 따라 을/를
+    function eulReul(word) {
+      const c = word.charCodeAt(word.length - 1);
+      const has = c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0;
+      return word + (has ? "을" : "를");
+    }
+
+    const objText = function (d) {
+      return '{ name: "' + d.name + '", price: ' + d.price + ", amount: " + d.amount + " }";
+    };
+
+    // ===== 단계 목록 =====
+    // 0 소개, 1 배열 만들기, 2 sum = 0, 3~52 반복 50번, 53 반복 끝, 54 출력
+    const STEPS = [{ kind: "intro" }, { kind: "array" }, { kind: "sum0" }];
+    for (let k = 0; k < N; k++) STEPS.push({ kind: "iter", k: k });
+    STEPS.push({ kind: "end" }, { kind: "print" });
+    const LAST = STEPS.length - 1;
+
+    // ===== 특정 단계·장면의 상태 계산 =====
+    function stateAt(n, phase) {
+      const step = STEPS[n];
+      const st = {
+        shown: n >= 1, sumShown: n >= 2, sum: n >= 2 ? 0 : null,
+        done: 0, current: -1, iter: 0, calc: null,
+        lines: [], related: -1, flow: [], fback: false, logs: [], explain: ""
+      };
+
+      if (step.kind === "intro") {
+        st.explain = '🛒 과일 가게에서 상품 <b>50개</b>를 장바구니에 담아 볼 거예요!<br>' +
+                     '왼쪽은 우리가 보는 <b>쇼핑 화면</b>, 오른쪽은 그 뒤에서 <b>컴퓨터가 생각하는 순서</b>예요.<br>' +
+                     '위의 <b>"다음 ▶"</b>을 눌러 시작하세요.';
+      }
+
+      if (step.kind === "array") {
+        st.lines = [0, 1, 2, 3, 4];
+        st.explain = '<b>배열 data</b> = 상품 정보 상자 <b>50개</b>를 한 줄로 세운 것이에요. (왼쪽 상품 목록)<br>' +
+                     '상자마다 <b>번호</b>가 붙는데 <b>0번부터</b> 시작해서 마지막은 <b>49번</b>이에요.<br>' +
+                     '상자 하나 = <code>{ name: 이름, price: 가격, amount: 개수 }</code>';
+      }
+
+      if (step.kind === "sum0") {
+        st.lines = [5];
+        st.explain = '합계를 모을 변수 <b>sum</b>을 <b>0원</b>에서 시작해요.<br>' +
+                     '빈 장바구니, 빈 영수증이라고 생각하세요 🧾';
+      }
+
+      if (step.kind === "iter") {
+        const k = step.k;
+        const d = data[k];
+        const sub = d.price * d.amount;
+        st.current = k;
+        st.iter = k + 1;
+        st.related = k < 2 ? 1 + k : 3;
+
+        if (phase === 1) {
+          st.done = k;
+          st.sum = prefix[k];
+          st.lines = [6];
+          st.flow = ["f1", "f2"];
+          st.calc = { k: k, stage: 0 };
+          st.explain = (k === 0
+              ? '<b>for…of</b>는 배열에서 상자를 <b>0번부터 순서대로 하나씩</b> 꺼내 <code>i</code>에 담아요.<br>' +
+                '상자가 50개니까 <b>같은 일을 50번</b> 반복합니다!<br>'
+              : "") +
+            '🔁 <b>' + (k + 1) + '번째 반복</b> — 아직 상자가 남았으니 <code>data[' + k + ']</code>를 꺼내 <code>i</code>에 담아요 → ' +
+            d.emoji + ' <b>' + d.name + '</b>';
+        } else if (phase === 2) {
+          st.done = k;
+          st.sum = prefix[k];
+          st.lines = [7];
+          st.flow = ["f3"];
+          st.calc = { k: k, stage: 1 };
+          st.explain = '🔁 <b>' + (k + 1) + '번째 반복</b> — <code>i.price × i.amount</code>로 이번 상품 금액을 계산해요.<br>' +
+                       d.emoji + ' ' + d.name + ' : <b>' + num(d.price) + '원 × ' + d.amount + '개 = ' + won(sub) + '</b>';
+        } else {
+          st.done = k + 1;
+          st.sum = prefix[k + 1];
+          st.lines = [7];
+          st.flow = ["f4"];
+          st.fback = k < N - 1;
+          st.calc = { k: k, stage: 2 };
+          st.explain = '🔁 <b>' + (k + 1) + '번째 반복</b> — ' + d.emoji + ' ' + eulReul(d.name) + ' 장바구니에 담고 <code>sum</code>에 더해요.<br>' +
+                       '<b>' + won(prefix[k]) + ' + ' + won(sub) + ' = ' + won(prefix[k + 1]) + '</b>' +
+                       (k === 2 ? '<br>💡 감이 오나요? 이제 <b>①→②→③→④</b>가 계속 반복돼요. 속도를 <b>빠르게</b>나 <b>터보</b>로 바꿔 보세요!' : "") +
+                       (k === N - 1 ? '<br>마지막 <b>49번</b> 상자까지 담았어요!' : "");
+        }
+      }
+
+      if (step.kind === "end" || step.kind === "print") {
+        st.done = N;
+        st.sum = TOTAL;
+        st.iter = N;
+      }
+
+      if (step.kind === "end") {
+        st.lines = [8];
+        st.flow = ["f1", "f5"];
+        st.explain = '① 아직 안 꺼낸 상자가 있나? → <b>아니오!</b> 50개를 다 꺼냈어요.<br>' +
+                     '그래서 <b>반복문을 빠져나옵니다.</b> 반복은 정확히 <b>50번</b>, 반복문 코드는 단 <b>3줄</b>이었어요.';
+      }
+
+      if (step.kind === "print") {
+        st.lines = [9];
+        st.flow = ["f5"];
+        st.logs = [String(TOTAL)];
+        st.explain = '🎉 <code>console.log(sum)</code> → 총 결제 금액 <b>' + won(TOTAL) + '</b>!<br>' +
+                     '💡 상품이 50개든 5,000개든 반복문 코드는 <b>똑같아요.</b> 이게 배열 + 반복문의 힘이에요.';
+      }
+
+      return st;
+    }
+
+    // ===== 코드 그리기 =====
+    const $ = function (id) { return document.getElementById(id); };
+    function esc(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+    function highlight(line) {
+      const re = /(\/\/.*$)|("[^"]*")|\b(let|const|for|of)\b|\b(\d+)\b/g;
+      let out = "", last = 0, m;
+      while ((m = re.exec(line))) {
+        out += esc(line.slice(last, m.index));
+        if (m[1]) out += '<span class="tk-cm">' + esc(m[1]) + "</span>";
+        else if (m[2]) out += '<span class="tk-str">' + esc(m[2]) + "</span>";
+        else if (m[3]) out += '<span class="tk-kw">' + m[3] + "</span>";
+        else out += '<span class="tk-num">' + m[4] + "</span>";
+        last = re.lastIndex;
+      }
+      return out + esc(line.slice(last));
+    }
+
+    function codeLines(st) {
+      const third = st.related === 3
+        ? "  " + objText(data[st.current]) + ",  // data[" + st.current + "] ← 지금 여기"
+        : "  // … data[2] ~ data[49] (48개 더) …";
+      return [
+        "const data = [",
+        "  " + objText(data[0]) + ",  // data[0]",
+        "  " + objText(data[1]) + ",  // data[1]",
+        third,
+        "];   // 상품 50개",
+        "let sum = 0;",
+        "for (const i of data) {   // 상자 수만큼 50번 반복",
+        "  sum += i.price * i.amount;",
+        "}",
+        "console.log(sum);"
+      ];
+    }
+
+    function drawCode(st) {
+      $("code").innerHTML = codeLines(st).map(function (t, i) {
+        const cls = ["code-line"];
+        if (st.lines.indexOf(i) >= 0) cls.push("active");
+        else if (i === st.related) cls.push("related");
+        return '<div class="' + cls.join(" ") + '"><span class="no">' + (i + 1) + "</span>" + highlight(t) + "</div>";
+      }).join("");
+    }
+
+    // ===== 상품 진열대 만들기 =====
+    data.forEach(function (d, k) {
+      const t = document.createElement("div");
+      t.className = "tile";
+      t.style.setProperty("--i", k);
+      t.title = "data[" + k + "] " + d.name + " " + num(d.price) + "원 × " + d.amount + "개";
+      t.innerHTML = '<span class="ti">' + k + '</span><div class="te">' + d.emoji + '</div><div class="ta">×' + d.amount + "</div>";
+      $("shelf").appendChild(t);
+    });
+    const tiles = $("shelf").children;
+
+    // ===== 화면 그리기 =====
+    function setSlot(id, val, filled) {
+      const el = $(id);
+      el.querySelector(".val").textContent = filled ? val : "?";
+      el.classList.toggle("filled", filled);
+    }
+
+    function draw(n, phase, animate) {
+      const st = stateAt(n, phase);
+      const prevDone = lastDone;
+
+      // 왼쪽: 진열대
+      const shelf = $("shelf");
+      shelf.classList.toggle("hidden", !st.shown);
+      shelf.classList.remove("appear");
+      if (animate && STEPS[n].kind === "array") { void shelf.offsetWidth; shelf.classList.add("appear"); }
+      $("lenLabel").textContent = st.shown ? "data.length = 50 (번호 0~49)" : "data.length = ?";
+      for (let k = 0; k < N; k++) {
+        tiles[k].classList.toggle("current", k === st.current);
+        tiles[k].classList.toggle("done", k < st.done && k !== st.current);
+      }
+
+      // 왼쪽: 장바구니
+      if (st.done === 0) {
+        $("cart").innerHTML = '<div class="empty">🧺 아직 비어 있어요</div>';
+      } else {
+        let html = "";
+        for (let k = st.done - 1; k >= 0; k--) {
+          const d = data[k];
+          const isNew = animate && k === st.done - 1 && st.done > prevDone;
+          html += '<div class="crow' + (isNew ? " new" : "") + '"><span class="ci">[' + k + ']</span><span class="ce">' + d.emoji +
+                  "</span><span>" + d.name + '</span><span class="cq">' + num(d.price) + "×" + d.amount +
+                  '</span><span class="cs">' + won(d.price * d.amount) + "</span></div>";
+        }
+        $("cart").innerHTML = html;
+        $("cart").scrollTop = 0;
+      }
+      let pieces = 0;
+      for (let k = 0; k < st.done; k++) pieces += data[k].amount;
+      $("stats").innerHTML = "담은 상품 <b>" + st.done + "</b> / 50줄<br>과일 <b>" + pieces + "</b>개";
+
+      // 오른쪽: 설명
+      $("explain").innerHTML = st.explain;
+
+      // 오른쪽: 상태 카드
+      $("loopVal").innerHTML = st.iter + " <small>/ 50</small>";
+      $("loopBar").style.width = (st.iter / N * 100) + "%";
+      if (st.current >= 0) {
+        const d = data[st.current];
+        $("iVal").innerHTML = d.emoji + " data[" + st.current + "]<br><small>" + d.name + " · " + num(d.price) + "원 · " + d.amount + "개</small>";
+      } else {
+        $("iVal").innerHTML = n >= LAST - 1 ? '<small>반복이 끝나 사라짐</small>' : "—";
+      }
+
+      // 숫자 (애니메이션 중이면 countUp이 덮어씀)
+      stopCount();
+      const sumText = st.sumShown ? won(st.sum) : "—";
+      $("sumVal").textContent = sumText;
+      $("money").textContent = st.sumShown ? won(st.sum) : "0원";
+
+      // 코드
+      drawCode(st);
+
+      // 순서도
+      ["f1", "f2", "f3", "f4", "f5"].forEach(function (id) { $(id).classList.toggle("on", st.flow.indexOf(id) >= 0); });
+      $("fback").classList.toggle("on", st.fback);
+
+      // 계산기
+      const c = st.calc;
+      if (c) {
+        const d = data[c.k];
+        const sub = d.price * d.amount;
+        setSlot("cP", num(d.price), c.stage >= 1);
+        setSlot("cA", d.amount, c.stage >= 1);
+        setSlot("cS", num(sub), c.stage >= 1);
+        setSlot("cB", num(prefix[c.k]), c.stage >= 2);
+        setSlot("cS2", num(sub), c.stage >= 2);
+        setSlot("cN", num(prefix[c.k + 1]), c.stage >= 2);
+      } else {
+        ["cP", "cA", "cS", "cB", "cS2", "cN"].forEach(function (id) { setSlot(id, "", false); });
+      }
+
+      // 콘솔
+      $("console").innerHTML = st.logs.length
+        ? st.logs.map(function (l) { return '<div class="ln">' + l + "</div>"; }).join("")
+        : '<span class="placeholder">아직 출력된 내용이 없어요</span>';
+
+      // 진행 표시
+      $("progress").textContent = "단계 " + n + " / " + LAST;
+      $("bar").style.width = (n / LAST * 100) + "%";
+      $("btnPrev").disabled = n === 0;
+      $("btnNext").disabled = n === LAST;
+      $("btnEnd").disabled = n === LAST;
+
+      lastDone = st.done;
+      if (!animate) return;
+
+      // ===== 애니메이션 효과 =====
+      if (STEPS[n].kind === "iter") {
+        const k = STEPS[n].k;
+        if (phase === 1) {
+          flash("statLoop"); flash("statI");
+          tiles[k].scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+        if (phase === 2) {
+          ["cP", "cA", "cS"].forEach(pop);
+        }
+        if (phase === 3) {
+          ["cB", "cS2", "cN"].forEach(pop);
+          flash("statSum");
+          flyFruit(data[k].emoji, tiles[k], $("cart"));
+          countUp(prefix[k], prefix[k + 1]);
+          bumpMoney();
+          if (speed() >= 400) { const p = center($("money")); burst(p.x, p.y, 18); }
+        }
+      }
+      if (STEPS[n].kind === "sum0") flash("statSum");
+      if (STEPS[n].kind === "print") celebrate();
+    }
+
+    let lastDone = 0;
+
+    // ===== 작은 효과들 =====
+    function flash(id) { const el = $(id); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+    function pop(id) { const el = $(id); el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
+    function bumpMoney() { const el = $("money"); el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+
+    function center(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + Math.min(r.height / 2, 30) }; }
+
+    function flyFruit(emoji, fromEl, toEl) {
+      const a = center(fromEl), b = center(toEl);
+      const dur = Math.max(150, Math.min(700, speed() * 0.9));
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.textContent = emoji;
+      chip.style.left = a.x + "px";
+      chip.style.top = a.y + "px";
+      chip.style.transitionDuration = dur + "ms, " + dur + "ms, 200ms, " + dur + "ms";
+      document.body.appendChild(chip);
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          chip.style.left = b.x + "px";
+          chip.style.top = b.y + "px";
+          chip.style.transform = "translate(-50%, -50%) scale(0.6)";
+        });
+      });
+      setTimeout(function () { chip.style.opacity = "0"; }, dur);
+      setTimeout(function () { chip.remove(); }, dur + 250);
+    }
+
+    let countRaf = null;
+    function stopCount() { if (countRaf) cancelAnimationFrame(countRaf); countRaf = null; }
+    function countUp(from, to) {
+      stopCount();
+      const dur = Math.max(80, Math.min(600, speed() * 0.8));
+      const start = performance.now();
+      function frame(now) {
+        const t = Math.min(1, (now - start) / dur);
+        const v = won(Math.round(from + (to - from) * t));
+        $("sumVal").textContent = v;
+        $("money").textContent = v;
+        countRaf = t < 1 ? requestAnimationFrame(frame) : null;
+      }
+      countRaf = requestAnimationFrame(frame);
+    }
+
+    let bannerTimer = null;
+    function celebrate() {
+      const b = $("banner");
+      b.innerHTML = "🎉 총 " + won(TOTAL) + "<small>상품 50줄 · 반복 50번 · 코드는 3줄!</small>";
+      b.classList.add("show");
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(function () { b.classList.remove("show"); }, 2800);
+      for (let i = 0; i < 5; i++) {
+        setTimeout(function () { burst(Math.random() * innerWidth, Math.random() * innerHeight * 0.5, 70); }, i * 250);
+      }
+    }
+
+    // ===== 폭죽 =====
+    const canvas = $("fx");
+    const ctx = canvas.getContext("2d");
+    let parts = [];
+    let animating = false;
+    const COLORS = ["#ff4fa3", "#34e7ff", "#9dff5c", "#ffd23f", "#a86bff", "#ff7a3d"];
+    function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+    addEventListener("resize", resize);
+    resize();
+
+    function burst(x, y, n) {
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      for (let i = 0; i < n; i++) {
+        const ang = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 6;
+        parts.push({ x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 2, life: 50 + Math.random() * 40,
+                     size: 3 + Math.random() * 5, color: COLORS[(Math.random() * COLORS.length) | 0], rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3 });
+      }
+      if (!animating) { animating = true; requestAnimationFrame(tick); }
+    }
+
+    function tick() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      parts = parts.filter(function (p) { return p.life > 0; });
+      parts.forEach(function (p) {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.vx *= 0.99; p.rot += p.vr; p.life--;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, p.life / 40);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      });
+      if (parts.length) requestAnimationFrame(tick);
+      else { animating = false; ctx.clearRect(0, 0, canvas.width, canvas.height); }
+    }
+
+    // ===== 진행 제어 =====
+    let stepIndex = 0;
+    let timers = [];
+    let playing = false;
+
+    function speed() { return Number($("speed").value); }
+    function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+    function cancelAll() { timers.forEach(clearTimeout); timers = []; }
+
+    // 한 단계를 보여 주는 데 걸리는 시간
+    function stepDuration(n) {
+      const D = speed();
+      return STEPS[n].kind === "iter" ? D * 3 + D * 0.4 : Math.max(900, D * 3);
+    }
+
+    function go(n, animate) {
+      cancelAll();
+      stepIndex = Math.max(0, Math.min(LAST, n));
+      $("banner").classList.remove("show");
+      if (animate && STEPS[stepIndex].kind === "iter") {
+        const D = speed();
+        const s = stepIndex;
+        draw(s, 1, true);
+        later(function () { draw(s, 2, true); }, D);
+        later(function () { draw(s, 3, true); }, D * 2);
+      } else {
+        draw(stepIndex, 3, animate);
+      }
+    }
+
+    function advance() {
+      if (stepIndex >= LAST) { stopPlay(); return; }
+      go(stepIndex + 1, true);
+      if (playing) later(advance, stepDuration(stepIndex));
+    }
+
+    function play() {
+      if (stepIndex >= LAST) { lastDone = 0; go(0); }
+      playing = true;
+      $("btnPlay").textContent = "⏸ 멈춤";
+      advance();
+    }
+
+    function stopPlay() {
+      playing = false;
+      $("btnPlay").textContent = "▶ 자동 재생";
+    }
+
+    function togglePlay() {
+      if (playing) { stopPlay(); go(stepIndex); } else play();
+    }
+
+    $("btnNext").onclick = function () { stopPlay(); go(stepIndex + 1, true); };
+    $("btnPrev").onclick = function () { stopPlay(); go(stepIndex - 1); };
+    $("btnReset").onclick = function () { stopPlay(); lastDone = 0; go(0); };
+    $("btnEnd").onclick = function () { stopPlay(); go(LAST, true); };
+    $("btnPlay").onclick = togglePlay;
+
+    document.addEventListener("keydown", function (e) {
+      if (e.target.tagName === "SELECT") return;
+      if (e.key === "ArrowRight") { stopPlay(); go(stepIndex + 1, true); }
+      else if (e.key === "ArrowLeft") { stopPlay(); go(stepIndex - 1); }
+      else if (e.key === " ") { e.preventDefault(); togglePlay(); }
+    });
+
+    go(0);
+  </script>
+</body>
+</html>
