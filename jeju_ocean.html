@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>제주 바다 노을</title>
+  <style>
+    :root {
+      --glass: rgba(12, 16, 32, 0.62);
+      --line: rgba(255, 255, 255, 0.16);
+      --ink: #f4f6ff;
+      --muted: #b9c0dd;
+      --accent: #ff9a4d;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #0b1020;
+      color: var(--ink);
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    }
+
+    canvas { display: block; }
+
+    #panel {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      width: 310px;
+      max-width: calc(100vw - 24px);
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: var(--glass);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      font-size: 0.9rem;
+    }
+
+    #panel.closed .body { display: none; }
+
+    .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .head h1 { font-size: 1.05rem; }
+    .head button { background: transparent; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 2px 8px; cursor: pointer; }
+
+    .body { margin-top: 10px; display: grid; gap: 12px; }
+    .group { display: grid; gap: 6px; }
+    .group > label, .group .lab { color: var(--muted); font-size: 0.8rem; }
+    .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+    button.btn, select {
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 7px 10px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    button.btn:hover { background: rgba(255, 255, 255, 0.16); }
+    button.btn.on { background: var(--accent); border-color: var(--accent); color: #1d0e00; font-weight: 700; }
+    select option { color: #111; }
+
+    .sunInfo { font-family: Consolas, monospace; font-size: 0.85rem; }
+    .hint { color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
+    input[type="file"] { font-size: 0.78rem; color: var(--muted); max-width: 100%; }
+    input[type="number"] { width: 80px; padding: 5px 6px; border-radius: 7px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); color: var(--ink); font: inherit; }
+
+    button.btn.danger { background: linear-gradient(90deg, #ff3b3b, #ff8a3d); border-color: transparent; color: #fff; font-weight: 800; box-shadow: 0 0 14px rgba(255, 70, 50, 0.55); }
+    button.btn.danger:hover { filter: brightness(1.1); }
+    button.btn:disabled { opacity: 0.45; cursor: default; }
+    .status { font-size: 0.82rem; color: #ffd2a8; min-height: 1.2em; }
+    .check { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 0.8rem; }
+
+    #underwater {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s;
+      background: radial-gradient(ellipse at 50% 20%, rgba(70, 140, 150, 0.55), rgba(6, 30, 40, 0.94));
+      display: grid;
+      place-items: center;
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #dff8ff;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+    }
+
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 16px;
+      font-size: 1rem;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    @media (max-width: 600px) {
+      #panel { top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: 46vh; }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="loading">🌊 제주 바다를 만드는 중…</div>
+  <div id="underwater">🌊 카메라가 해일에 잠겼어요!</div>
+
+  <div id="panel">
+    <div class="head">
+      <h1>🌅 제주 바다 노을</h1>
+      <button id="btnFold" type="button" aria-label="패널 접기">접기</button>
+    </div>
+    <div class="body">
+      <div class="group">
+        <label for="time">☀️ 태양 시간 (오후 → 해 질 녘)</label>
+        <input type="range" id="time" min="0" max="1000" value="0">
+        <div class="sunInfo" id="sunInfo"></div>
+        <div class="row">
+          <button class="btn" id="btnPlay" type="button">⏸ 멈춤</button>
+          <select id="speed" aria-label="재생 속도">
+            <option value="80">🐢 느리게</option>
+            <option value="40" selected>🚶 보통</option>
+            <option value="15">🏃 빠르게</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="group">
+        <label for="wave">🌊 파도 높이</label>
+        <input type="range" id="wave" min="0" max="200" value="100">
+      </div>
+
+      <div class="group">
+        <span class="lab">🎥 카메라</span>
+        <div class="row">
+          <button class="btn on" id="camCoast" type="button">🏖️ 해안에서</button>
+          <button class="btn" id="camSky" type="button">🛩️ 하늘에서</button>
+          <button class="btn" id="camWatch" type="button">🌋 해일 보기</button>
+        </div>
+        <p class="hint">드래그: 회전 · 휠/두 손가락: 확대 · 오른쪽 드래그: 이동</p>
+      </div>
+
+      <div class="group">
+        <span class="lab">💣 해일 실험</span>
+        <div class="row">
+          <button class="btn danger" id="btnBomb" type="button">💣 폭탄 투하</button>
+          <button class="btn" id="btnPick" type="button">🎯 위치 고르기</button>
+          <button class="btn" id="btnReset" type="button">🔄 원래대로</button>
+        </div>
+        <label for="tsuAmp">🌊 해일 높이: <b id="tsuAmpVal">250 m</b></label>
+        <input type="range" id="tsuAmp" min="50" max="600" step="10" value="250">
+        <label class="check"><input type="checkbox" id="autoCam" checked> 투하하면 "해일 보기" 카메라로 이동</label>
+        <div class="status" id="tsuStatus">🎯 빨간 원 위치에 폭탄이 떨어집니다.</div>
+      </div>
+
+      <div class="group">
+        <span class="lab">🗺️ 제주도 DEM (흑백 높이 지도 이미지)</span>
+        <input type="file" id="dem" accept="image/png,image/jpeg">
+        <div class="row">
+          <span class="hint">흰색 = </span>
+          <input type="number" id="demMax" value="2000" min="100" step="50" aria-label="흰색이 뜻하는 높이">
+          <span class="hint">m</span>
+          <button class="btn" id="btnSynthetic" type="button">가상 지형</button>
+        </div>
+        <p class="hint">경도 126.14~126.97°E, 위도 33.11~33.57°N 범위(약 77×51 km)로 자른 이미지를 넣으세요. 지금은 가상 제주도 지형입니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { Sky } from "three/addons/objects/Sky.js";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    const $ = (id) => document.getElementById(id);
+    const loading = $("loading");
+    addEventListener("error", (e) => { loading.textContent = "⚠ 오류: " + e.message; });
+
+    // ===== 기본 설정 =====
+    const W_M = 77000;         // 지형이 덮는 동서 거리 (m)
+    const H_M = 51000;         // 남북 거리 (m)
+    const EXAG = 1.5;          // 높이 과장
+    const GRID_X = 360, GRID_Y = 240;
+    const DEG = Math.PI / 180;
+    // 좌표: x = 동쪽, y = 위, z = 남쪽 (북쪽 = -z), 1 = 1 m
+
+    // ===== 렌더러 / 장면 / 카메라 =====
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.5;
+    document.body.prepend(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 900000);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 5;
+    controls.maxDistance = 150000;
+
+    // ===== 하늘 =====
+    const sky = new Sky();
+    sky.scale.setScalar(450000);
+    scene.add(sky);
+    const su = sky.material.uniforms;
+    su.turbidity.value = 5;
+    su.rayleigh.value = 2.2;
+    su.mieCoefficient.value = 0.005;
+    su.mieDirectionalG.value = 0.86;
+
+    const sunLight = new THREE.DirectionalLight(0xffffff, 3);
+    scene.add(sunLight, sunLight.target);
+    const hemi = new THREE.HemisphereLight(0x9fc4ff, 0x1d2a1a, 0.7);
+    scene.add(hemi);
+    scene.fog = new THREE.Fog(0xcfd8e6, 20000, 180000);
+
+    function sunDirection(azDeg, elDeg) {
+      const a = azDeg * DEG, e = elDeg * DEG;
+      return new THREE.Vector3(Math.sin(a) * Math.cos(e), Math.sin(e), -Math.cos(a) * Math.cos(e));
+    }
+
+    // ===== 지형: 가상 제주도 =====
+    function mulberry32(seed) {
+      return function () {
+        let t = (seed += 0x6d2b79f5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function syntheticJeju(cols, rows) {
+      const z = new Float32Array(cols * rows);
+      const th = 14 * DEG, c = Math.cos(th), s = Math.sin(th);
+      const a = 35500, b = 15000;
+      const rng = mulberry32(7);
+      const oreums = [];
+      for (let i = 0; i < 70; i++) {
+        const t = rng() * Math.PI * 2, rr = Math.sqrt(0.02 + rng() * 0.83);
+        const ox = rr * a * Math.cos(t), oy = rr * b * Math.sin(t);
+        oreums.push({ x: ox * c - oy * s, y: ox * s + oy * c, h: 40 + rng() * 120, r: 250 + rng() * 400 });
+      }
+      const sx = 0.985 * a * c, sy = 0.985 * a * s; // 성산일출봉
+
+      for (let j = 0; j < rows; j++) {
+        const Y = (j / (rows - 1) - 0.5) * H_M; // 북쪽이 +
+        for (let i = 0; i < cols; i++) {
+          const X = (i / (cols - 1) - 0.5) * W_M;
+          const xr = X * c + Y * s, yr = -X * s + Y * c;
+          const ang = Math.atan2(yr / b, xr / a);
+          const wob = 1 + 0.035 * Math.sin(ang * 7 + 0.4) + 0.025 * Math.sin(ang * 13 + 1.7) + 0.015 * Math.sin(ang * 23);
+          const r = Math.hypot(xr / a, yr / b) / wob;
+          let h;
+          if (r >= 1) {
+            h = -Math.min(60, Math.max(6, (r - 1) * 8000));
+          } else {
+            const d = Math.hypot(X, Y);
+            h = 1520 * Math.pow(1 - r, 1.15) + 430 * Math.exp(-((d / 2300) ** 2));
+            if (r < 0.97) {
+              for (const o of oreums) {
+                const dx = X - o.x, dy = Y - o.y, d2 = dx * dx + dy * dy;
+                if (d2 < 9 * o.r * o.r) h += o.h * Math.exp(-d2 / (o.r * o.r));
+              }
+            }
+            h += 180 * Math.exp(-(((X - sx) ** 2 + (Y - sy) ** 2) / 600 ** 2));
+          }
+          z[j * cols + i] = h;
+        }
+      }
+      return { z, cols, rows };
+    }
+
+    // 흑백 높이 지도 이미지 → 높이 배열
+    function heightsFromImage(img, maxM) {
+      const cols = Math.min(img.width, 480);
+      const rows = Math.max(2, Math.round(cols * img.height / img.width));
+      const cv = document.createElement("canvas");
+      cv.width = cols; cv.height = rows;
+      const ctx = cv.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, cols, rows);
+      const px = ctx.getImageData(0, 0, cols, rows).data;
+      const z = new Float32Array(cols * rows);
+      for (let j = 0; j < rows; j++) {
+        const srcRow = rows - 1 - j; // 이미지 윗줄 = 북쪽 → j = 0 이 남쪽이 되도록 뒤집기
+        for (let i = 0; i < cols; i++) {
+          const v = px[(srcRow * cols + i) * 4] / 255 * maxM;
+          z[j * cols + i] = v > 0.5 ? v : -30;
+        }
+      }
+      return { z, cols, rows };
+    }
+
+    // 높이 → 색 (Blender 버전과 같은 색 구성)
+    const RAMP = [
+      [0.0, [0.05, 0.05, 0.05]],      // 검은 현무암 해안
+      [0.004, [0.07, 0.13, 0.035]],   // 해안 초지·밭
+      [0.2, [0.025, 0.075, 0.02]],    // 숲
+      [0.55, [0.04, 0.07, 0.03]],     // 고지대 숲
+      [0.8, [0.16, 0.14, 0.11]],      // 관목·암석
+      [1.0, [0.62, 0.62, 0.6]]        // 정상
+    ];
+    function rampColor(t) {
+      t = Math.min(1, Math.max(0, t));
+      for (let k = 1; k < RAMP.length; k++) {
+        if (t <= RAMP[k][0]) {
+          const [p0, c0] = RAMP[k - 1], [p1, c1] = RAMP[k];
+          const f = (t - p0) / (p1 - p0);
+          return c0.map((v, i) => v + (c1[i] - v) * f);
+        }
+      }
+      return RAMP[RAMP.length - 1][1];
+    }
+
+    let terrain = null;
+    let heightData = null;
+
+    function buildTerrain(data) {
+      heightData = data;
+      const { z, cols, rows } = data;
+      const pos = new Float32Array(cols * rows * 3);
+      let maxY = 1;
+      for (let j = 0; j < rows; j++) {
+        const Y = (j / (rows - 1) - 0.5) * H_M;
+        for (let i = 0; i < cols; i++) {
+          const k = j * cols + i;
+          const X = (i / (cols - 1) - 0.5) * W_M;
+          const y = z[k] * EXAG;
+          pos[k * 3] = X; pos[k * 3 + 1] = y; pos[k * 3 + 2] = -Y;
+          if (y > maxY) maxY = y;
+        }
+      }
+      const idx = [];
+      for (let j = 0; j < rows - 1; j++) {
+        for (let i = 0; i < cols - 1; i++) {
+          const a = j * cols + i, b = a + 1, c = a + cols, d = c + 1;
+          idx.push(a, b, d, a, d, c);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+
+      const nrm = geo.attributes.normal.array;
+      const col = new Float32Array(cols * rows * 3);
+      for (let k = 0; k < cols * rows; k++) {
+        let cc = rampColor(Math.max(0, pos[k * 3 + 1]) / maxY);
+        const slope = Math.min(1, Math.max(0, (0.92 - nrm[k * 3 + 1]) / 0.22)); // 급경사 = 어두운 현무암
+        cc = cc.map((v, i) => v + ([0.08, 0.07, 0.065][i] - v) * slope);
+        col.set(cc, k * 3);
+      }
+      geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+
+      if (terrain) { scene.remove(terrain); terrain.geometry.dispose(); }
+      terrain = new THREE.Mesh(geo, terrainMat);
+      scene.add(terrain);
+    }
+
+    const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+
+    // 남쪽 해안선 찾기 (x 위치에서 남쪽 바다 → 북쪽으로)
+    function findCoastZ(xM) {
+      const { z, cols, rows } = heightData;
+      const i = Math.round((xM / W_M + 0.5) * (cols - 1));
+      for (let j = 0; j < rows; j++) {
+        if (z[j * cols + i] > 1) return -((j / (rows - 1) - 0.5) * H_M);
+      }
+      return H_M * 0.3;
+    }
+
+    // ===== 바다 셰이더 (거스트너 파도 + 태양 반사) =====
+    const oceanUniforms = {
+      uTime: { value: 0 },
+      uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+      uSunColor: { value: new THREE.Color(1, 1, 1) },
+      uSkyZenith: { value: new THREE.Color(0.2, 0.35, 0.7) },
+      uSkyHorizon: { value: new THREE.Color(0.8, 0.85, 0.9) },
+      uWaterColor: { value: new THREE.Color(0.004, 0.03, 0.05) },
+      uWaveScale: { value: 1.0 },
+      uPixAngle: { value: 0.001 },
+      uFogDist: { value: 60000 },
+      uTsuC: { value: new THREE.Vector2(0, 0) },
+      uTsuT: { value: -1 },
+      uTsuAmp: { value: 250 },
+      uTsuSpeed: { value: 700 }
+    };
+
+    const WAVES_GLSL = `
+      const int NW = 8;
+      // (방향 x, 방향 z, 파장 m, 가파름)
+      const vec4 WAVES[NW] = vec4[NW](
+        vec4( 0.60, -0.80, 62.0, 0.10),
+        vec4( 0.85, -0.52, 41.0, 0.10),
+        vec4( 0.30, -0.95, 27.0, 0.11),
+        vec4( 0.95, -0.30, 17.0, 0.12),
+        vec4( 0.50, -0.86, 11.0, 0.13),
+        vec4(-0.20, -0.98,  7.3, 0.13),
+        vec4( 0.99,  0.10,  4.6, 0.12),
+        vec4( 0.70, -0.71,  2.9, 0.11)
+      );
+      uniform float uTime;
+      uniform float uWaveScale;
+      uniform float uPixAngle;
+
+      // 거스트너 파도: 변위(disp)와 법선(nrm)을 함께 계산
+      void gerstner(vec2 p, float dist, out vec3 disp, out vec3 nrm) {
+        disp = vec3(0.0);
+        vec3 n = vec3(0.0, 1.0, 0.0);
+        float footprint = dist * uPixAngle * 3.0;  // 화면 한 픽셀이 덮는 바다 크기
+        for (int i = 0; i < NW; i++) {
+          vec2 D = normalize(WAVES[i].xy);
+          float L = WAVES[i].z;
+          float k = 6.2831853 / L;
+          float c = sqrt(9.8 / k);
+          float f = k * (dot(D, p) - c * uTime);
+          float att = clamp((L / max(footprint, 0.001) - 2.0) / 6.0, 0.0, 1.0); // 멀리서 깜빡임 방지
+          float Q = WAVES[i].w * uWaveScale * att;
+          float a = Q / k;
+          float cf = cos(f), sf = sin(f);
+          disp += vec3(D.x * a * cf, a * sf, D.y * a * cf);
+          n.x -= D.x * Q * cf;
+          n.z -= D.y * Q * cf;
+          n.y -= Q * sf;
+        }
+        nrm = normalize(n);
+      }
+
+      // ===== 해일: 폭발 지점에서 동그랗게 퍼지는 거대한 물 벽 + 뒤따르는 범람 =====
+      uniform vec2 uTsuC;      // 폭발 위치 (x, z)
+      uniform float uTsuT;     // 폭발 후 지난 시간 (초, 음수 = 없음)
+      uniform float uTsuAmp;   // 해일 높이 (m)
+      uniform float uTsuSpeed; // 퍼지는 속도 (m/s)
+
+      float tsunami(vec2 p, out float wall, out float A, out float d, out float since) {
+        wall = 0.0; A = 0.0; d = 1e9; since = -1.0;
+        if (uTsuT < 0.0) return 0.0;
+        float r = length(p - uTsuC);
+        d = r - uTsuSpeed * uTsuT;                    // + : 아직 안 옴, - : 지나감
+        since = uTsuT - r / uTsuSpeed;                // 앞머리가 지나간 뒤 시간
+        A = uTsuAmp * smoothstep(0.0, 4.0, uTsuT) * (0.55 + 0.45 * exp(-r / 25000.0));
+        float w = d > 0.0 ? 500.0 : 2200.0;           // 앞은 가파르게, 뒤는 완만하게
+        wall = A * exp(-(d * d) / (w * w));
+        float flood = A * 0.5 * smoothstep(0.0, 1500.0, -d) * (1.0 - smoothstep(18.0, 40.0, since));
+        float dome = uTsuAmp * 1.2 * exp(-(r * r) / (900.0 * 900.0)) * (1.0 - smoothstep(0.0, 3.0, uTsuT));
+        return wall + flood + dome;
+      }
+
+      float tsunamiH(vec2 p) {
+        float a, b, c, e;
+        return tsunami(p, a, b, c, e);
+      }
+    `;
+
+    const oceanVertex = `
+      ${WAVES_GLSL}
+      uniform float uDisplace;
+      varying vec3 vWorld;
+      varying vec2 vXZ;
+      void main() {
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vXZ = wp.xz;
+        if (uDisplace > 0.5 && uDisplace < 1.5) {      // 1 = 잔파도 + 해일
+          float dist = length(wp.xz - cameraPosition.xz);
+          vec3 d, n;
+          gerstner(wp.xz, dist, d, n);
+          wp.xyz += d * (1.0 - smoothstep(1500.0, 3000.0, dist));
+        }
+        if (uDisplace > 0.5) wp.y += tsunamiH(vXZ);    // 1, 2 = 해일로 물이 솟음
+        vWorld = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `;
+
+    const oceanFragment = `
+      ${WAVES_GLSL}
+      uniform vec3 uSunDir;
+      uniform vec3 uSunColor;
+      uniform vec3 uSkyZenith;
+      uniform vec3 uSkyHorizon;
+      uniform vec3 uWaterColor;
+      uniform float uFogDist;
+      uniform vec2 uHoleC;
+      uniform float uHoleHalf;
+      varying vec3 vWorld;
+      varying vec2 vXZ;
+
+      float hash12(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+      }
+      float vnoise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash12(i), hash12(i + vec2(1, 0)), u.x),
+                   mix(hash12(i + vec2(0, 1)), hash12(i + vec2(1, 1)), u.x), u.y);
+      }
+      vec2 ngrad(vec2 p) {
+        float e = 0.08, c = vnoise(p);
+        return vec2(vnoise(p + vec2(e, 0.0)) - c, vnoise(p + vec2(0.0, e)) - c) / e;
+      }
+
+      void main() {
+        // 더 촘촘한 바다가 덮고 있는 구역은 그리지 않음 (겹침 방지)
+        if (uHoleHalf > 0.0 && abs(vXZ.x - uHoleC.x) < uHoleHalf && abs(vXZ.y - uHoleC.y) < uHoleHalf) discard;
+
+        float dist = length(vWorld - cameraPosition);
+        vec3 d, N;
+        gerstner(vXZ, dist, d, N);
+
+        // 해일의 기울기 → 법선
+        float wall, A, dd, since;
+        float h0 = tsunami(vXZ, wall, A, dd, since);
+        if (uTsuT >= 0.0) {
+          float e = max(25.0, dist * uPixAngle * 2.0);
+          float hx = tsunamiH(vXZ + vec2(e, 0.0)) - h0;
+          float hz = tsunamiH(vXZ + vec2(0.0, e)) - h0;
+          N = normalize(N + vec3(-hx / e, 0.0, -hz / e));
+        }
+
+        // 잔물결 (가까울수록 강하게)
+        float footprint = dist * uPixAngle * 3.0;
+        float detail = clamp(1.2 / max(footprint, 0.001) - 0.3, 0.0, 1.0);
+        vec2 g = ngrad(vXZ * 0.45 + uTime * vec2(0.25, -0.35)) * 0.10
+               + ngrad(vXZ * 1.30 - uTime * vec2(0.40, 0.15)) * 0.05;
+        N = normalize(N + vec3(g.x, 0.0, g.y) * detail);
+
+        vec3 V = normalize(cameraPosition - vWorld);
+        if (dot(N, V) < 0.02) N = normalize(N + V * (0.02 - dot(N, V)));
+        vec3 R = reflect(-V, N);
+        R.y = abs(R.y);
+
+        float fres = 0.02 + 0.98 * pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 5.0);
+        vec3 skyCol = mix(uSkyHorizon, uSkyZenith, pow(clamp(R.y, 0.0, 1.0), 0.45));
+        float sd = max(dot(R, uSunDir), 0.0);
+        skyCol += uSunColor * pow(sd, 12.0) * 0.12;            // 태양 주변 노을빛
+
+        // 태양 반짝임: 멀수록 넓게 퍼져 '빛길'이 생김
+        float shin = mix(2500.0, 220.0, smoothstep(300.0, 25000.0, dist));
+        float sunUp = smoothstep(-0.01, 0.02, uSunDir.y);
+        vec3 spec = uSunColor * pow(sd, shin) * (shin + 2.0) / 25.0 * sunUp;
+
+        float lit = 0.15 + 0.85 * clamp(uSunDir.y * 3.0, 0.0, 1.0);
+        vec3 water = uWaterColor * lit + uSkyHorizon * 0.015;
+
+        // 해일이 지나간 곳: 흙탕물 / 물 벽 꼭대기: 흰 거품
+        float foam = 0.0;
+        if (uTsuT >= 0.0) {
+          float muddy = smoothstep(0.0, 2500.0, -dd) * (1.0 - smoothstep(18.0, 45.0, since));
+          water = mix(water, vec3(0.045, 0.05, 0.03) * lit, muddy);
+          water += vec3(0.02, 0.09, 0.08) * lit * (wall / max(A, 1.0));        // 물 벽을 통과한 빛 (청록)
+          foam = smoothstep(0.45, 0.95, wall / max(A, 1.0));
+          foam += 0.5 * smoothstep(0.0, 700.0, -dd) * (1.0 - smoothstep(700.0, 3500.0, -dd)) * step(0.0, since);
+          foam *= 0.55 + 0.9 * vnoise(vXZ * 0.012 + uTime * vec2(0.15, -0.1));
+          foam += smoothstep(0.3, 1.0, h0 / max(uTsuAmp, 1.0)) * (1.0 - smoothstep(0.0, 3.0, uTsuT)); // 폭발 직후 물기둥 주변
+          foam = clamp(foam, 0.0, 1.0);
+        }
+
+        vec3 col = mix(water, skyCol, fres) + spec * (1.0 - foam);
+        col = mix(col, (uSkyHorizon * 0.5 + uSunColor * 0.035) * (0.4 + 0.6 * lit), foam * 0.9);
+
+        // 수평선 쪽 대기 흐림
+        float fog = 1.0 - exp(-dist / uFogDist);
+        col = mix(col, uSkyHorizon, fog * 0.8);
+
+        gl_FragColor = vec4(col, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }
+    `;
+
+    // displace: 0 = 평평, 1 = 잔파도 + 해일, 2 = 해일만 / holeHalf: 이 크기 안쪽은 그리지 않음
+    function oceanMaterial(displace, holeHalf) {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          ...oceanUniforms,
+          uDisplace: { value: displace },
+          uHoleC: { value: new THREE.Vector2(0, 0) },
+          uHoleHalf: { value: holeHalf }
+        },
+        vertexShader: oceanVertex,
+        fragmentShader: oceanFragment
+      });
+    }
+
+    function seaMesh(size, seg, material) {
+      const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+      geo.rotateX(-Math.PI / 2);
+      const m = new THREE.Mesh(geo, material);
+      m.frustumCulled = false;
+      scene.add(m);
+      return m;
+    }
+
+    // ① 카메라 주변 6 km: 촘촘하게 출렁이는 바다
+    const NEAR_SIZE = 6000, NEAR_SEG = 400, NEAR_STEP = NEAR_SIZE / NEAR_SEG;
+    const oceanNear = seaMesh(NEAR_SIZE, NEAR_SEG, oceanMaterial(1, 0));
+    // ② 섬 전체를 덮는 100 km: 해일이 퍼지며 섬을 덮치는 바다
+    const MID_SIZE = 100000;
+    const oceanMid = seaMesh(MID_SIZE, 600, oceanMaterial(2, NEAR_SIZE / 2 - 0.5));
+    // ③ 그 바깥: 수평선까지 이어지는 평평한 바다
+    const oceanFar = seaMesh(1600000, 1, oceanMaterial(0, MID_SIZE / 2 - 0.5));
+
+    // ===== 태양 이동 =====
+    const SUN = { az0: 175, az1: 245, el0: 22, el1: 0.5 };
+    let sunT = 0;
+
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const lerp3 = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
+
+    function compassName(az) {
+      const names = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"];
+      return names[Math.round(az / 45) % 8];
+    }
+
+    function applySun() {
+      const ease = 0.5 - 0.5 * Math.cos(Math.PI * sunT);
+      const az = lerp(SUN.az0, SUN.az1, sunT);
+      const el = lerp(SUN.el0, SUN.el1, ease);
+      const dir = sunDirection(az, el);
+
+      su.sunPosition.value.copy(dir);
+      oceanUniforms.uSunDir.value.copy(dir);
+
+      const k = Math.min(1, Math.max(0, (el - 0.5) / 20));   // 0 = 해 질 녘, 1 = 오후
+      const sunCol = lerp3([1.0, 0.42, 0.16], [1.0, 0.93, 0.82], Math.pow(k, 0.6));
+      const sunPow = lerp(9, 14, k);
+      oceanUniforms.uSunColor.value.setRGB(sunCol[0] * sunPow, sunCol[1] * sunPow, sunCol[2] * sunPow);
+      const hor = lerp3([0.95, 0.52, 0.32], [0.62, 0.72, 0.85], k);
+      const zen = lerp3([0.12, 0.16, 0.32], [0.10, 0.24, 0.55], k);
+      oceanUniforms.uSkyHorizon.value.setRGB(...hor);
+      oceanUniforms.uSkyZenith.value.setRGB(...zen);
+
+      sunLight.position.copy(dir).multiplyScalar(100000);
+      sunLight.color.setRGB(...sunCol);
+      sunLight.intensity = lerp(1.2, 3.2, k);
+      hemi.intensity = lerp(0.6, 0.8, k);
+      hemi.color.setRGB(...lerp3([0.9, 0.6, 0.5], [0.62, 0.77, 1.0], k));
+      scene.fog.color.setRGB(...hor.map((v) => v * 0.9));
+
+      $("sunInfo").textContent = `고도 ${el.toFixed(1)}° · 방위 ${az.toFixed(0)}° (${compassName(az)})`;
+      $("time").value = Math.round(sunT * 1000);
+    }
+
+    // ===== 카메라 위치 =====
+    function lookDir(azDeg, pitchDeg) {
+      return sunDirection(azDeg, pitchDeg);
+    }
+
+    function setCamera(kind) {
+      $("camCoast").classList.toggle("on", kind === "coast");
+      $("camSky").classList.toggle("on", kind === "sky");
+      let pos, dir, dist;
+      if (kind === "coast") {
+        const x = -10000;
+        pos = new THREE.Vector3(x, 25, findCoastZ(x) + 120);
+        dir = lookDir(232, 3);
+        dist = 800;
+      } else {
+        pos = new THREE.Vector3(12000, 9000, -30000);
+        dir = lookDir(215, -13);
+        dist = 20000;
+      }
+      camera.position.copy(pos);
+      controls.target.copy(pos).addScaledVector(dir, dist);
+      controls.update();
+    }
+
+    // ===== UI =====
+    let playing = true;
+    let duration = 40; // 오후 → 해 질 녘까지 걸리는 시간 (초)
+
+    $("btnPlay").onclick = () => {
+      playing = !playing;
+      $("btnPlay").textContent = playing ? "⏸ 멈춤" : "▶ 재생";
+    };
+    $("speed").onchange = (e) => { duration = Number(e.target.value); };
+    $("time").oninput = (e) => { sunT = Number(e.target.value) / 1000; applySun(); };
+    $("wave").oninput = (e) => { oceanUniforms.uWaveScale.value = Number(e.target.value) / 100; };
+    $("camCoast").onclick = () => setCamera("coast");
+    $("camSky").onclick = () => setCamera("sky");
+    $("btnFold").onclick = () => {
+      const p = $("panel");
+      p.classList.toggle("closed");
+      $("btnFold").textContent = p.classList.contains("closed") ? "펼치기" : "접기";
+    };
+    $("btnSynthetic").onclick = () => { buildTerrain(syntheticJeju(GRID_X, GRID_Y)); };
+    $("dem").onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        buildTerrain(heightsFromImage(img, Number($("demMax").value) || 2000));
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = () => alert("이미지를 읽지 못했어요. PNG 또는 JPG 흑백 높이 지도를 넣어 주세요.");
+      img.src = url;
+    };
+
+    addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    // ===== 시작 =====
+    buildTerrain(syntheticJeju(GRID_X, GRID_Y));
+    setCamera("coast");
+    applySun();
+
+    const clock = new THREE.Clock();
+    let firstFrame = true;
+    renderer.setAnimationLoop(() => {
+      const dt = Math.min(clock.getDelta(), 0.1);
+      oceanUniforms.uTime.value += dt;
+
+      if (playing) {
+        sunT += dt / duration;
+        if (sunT > 1) sunT = 0;
+        applySun();
+      }
+
+      // 출렁이는 바다를 카메라 아래로 따라오게 (격자 간격에 맞춰 이동해 흔들림 방지)
+      oceanNear.position.x = Math.round(camera.position.x / NEAR_STEP) * NEAR_STEP;
+      oceanNear.position.z = Math.round(camera.position.z / NEAR_STEP) * NEAR_STEP;
+
+      // 카메라 높이에 맞춰 가까운 면 조정 (깊이 정밀도)
+      const h = Math.max(1, camera.position.y);
+      camera.near = Math.min(500, Math.max(0.5, h * 0.05));
+      camera.updateProjectionMatrix();
+      oceanUniforms.uPixAngle.value = 2 * Math.tan(camera.fov * DEG / 2) / innerHeight;
+      oceanUniforms.uFogDist.value = 60000 + h * 25; // 높이 올라갈수록 대기 흐림을 약하게
+
+      controls.update();
+      renderer.render(scene, camera);
+      if (firstFrame) { loading.remove(); firstFrame = false; }
+    });
+  </script>
+</body>
+</html>
